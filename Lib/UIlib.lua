@@ -1,7 +1,7 @@
 --[[
 ╔══════════════════════════════════════════════════════════════════╗
-║                  TKLib  ·  UIlib.lua  ·  v2.1                   ║
-║          Roblox UI Framework  ·  github.com/YOUR_REPO            ║
+║                  TKLib  ·  UIlib.lua  ·  v2.1                    ║
+║                       Roblox UI Lib                              ║
 ╚══════════════════════════════════════════════════════════════════╝
 
   UIlib.MainWindow(name)                               → WindowObj
