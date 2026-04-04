@@ -1,789 +1,930 @@
 # TKLib — UIlib.lua
-### Complete Reference Manual
+### Complete Reference Manual — v3.0
 
 UIlib is a Roblox Lua UI framework for building hub-style GUIs.  
-It gives you windows, sections, buttons, toggles, sliders, dropdowns, textboxes, notifications, a color editor, and theme control — all with one `require` or `loadstring`.
+It gives you windows, sections, buttons, toggles, sliders, dropdowns, textboxes, notifications, a color editor, theme control, keybinds, progress bars, tables, profiles, config import/export, and much more — all from one `require` or `loadstring`.
+
+> **Backward compatible.** All v2.x scripts continue to work without changes.
 
 ---
 
 ## Table of Contents
 
-1. [Quick Start](#1-quick-start)  
-2. [MainWindow](#2-mainwindow)  
-3. [Section](#3-section)  
-4. [CreateButton](#4-createbutton)  
-5. [CreateToggle](#5-createtoggle)  
-6. [CreateSlider](#6-createslider)  
-7. [CreateDropdown](#7-createdropdown)  
-8. [CreateTextbox](#8-createtextbox)  
-9. [CreateLabel](#9-createlabel)  
-10. [CreateSeparator](#10-createseparator)  
-11. [AddSetting](#11-addsetting)  
-12. [Notify](#12-notify)  
-13. [SetTheme](#13-settheme)  
-14. [SetOpacity](#14-setopacity)  
-15. [OpenColorEditor](#15-opencoloreditor)  
-16. [Destroy](#16-destroy)  
-17. [UIlib.THEME table](#17-uilibtable)  
-18. [Keyboard Shortcut](#18-keyboard-shortcut)  
-19. [Full Example](#19-full-example)  
-20. [Common Mistakes](#20-common-mistakes)
+1. [Quick Start](#1-quick-start)
+2. [What's New in v3.0](#2-whats-new-in-v30)
+3. [MainWindow](#3-mainwindow)
+4. [Section](#4-section)
+5. [CreateButton](#5-createbutton)
+6. [CreateToggle](#6-createtoggle)
+7. [CreateSlider](#7-createslider)
+8. [CreateDropdown](#8-createdropdown)
+9. [CreateTextbox](#9-createtextbox)
+10. [CreateLabel](#10-createlabel)
+11. [CreateSeparator](#11-createseparator)
+12. [CreateColorPicker](#12-createcolorpicker)
+13. [CreateKeybind](#13-createkeybind)
+14. [CreateProgressBar](#14-createprogressbar)
+15. [CreateTable](#15-createtable)
+16. [CreateTab (Window Inner Tabs)](#16-createtab-window-inner-tabs)
+17. [AddSetting](#17-addsetting)
+18. [Notify](#18-notify)
+19. [SetTheme](#19-settheme)
+20. [SetOpacity](#20-setopacity)
+21. [SetAnimation](#21-setanimation)
+22. [OpenColorEditor](#22-opencoloreditor)
+23. [SetTooltip](#23-settooltip)
+24. [Config System](#24-config-system)
+25. [Profile System](#25-profile-system)
+26. [Import / Export Config](#26-import--export-config)
+27. [Event System](#27-event-system)
+28. [Element Registry](#28-element-registry)
+29. [Destroy](#29-destroy)
+30. [UIlib.THEME table](#30-uilibtable)
+31. [Keyboard Shortcut](#31-keyboard-shortcut)
+32. [Versioning & Update Check](#32-versioning--update-check)
+33. [Full Example](#33-full-example)
+34. [Common Mistakes](#34-common-mistakes)
+35. [Backward Compatibility](#35-backward-compatibility)
 
 ---
 
 ## 1. Quick Start
 
 ```lua
--- Load the library (one of the three ways below)
-
 -- Option A: loadstring from GitHub
-local UIlib = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOU/REPO/main/TKLib/Lib/UIlib.lua", true))()
+local UIlib = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/T1K2060/TKHub/refs/heads/main/Lib/UIlib.lua", true
+))()
 
 -- Option B: require from ModuleScript (Studio)
 local UIlib = require(game.StarterGui.TKLib.UIlib)
 
--- Option C: already injected by loader.lua — just use the argument
-local function MyHub(UIlib)   -- UIlib passed in by loader
+-- Option C: passed in by loader.lua
+local function MyHub(UIlib)
     ...
 end
 ```
 
-Once you have `UIlib`, the typical workflow is:
+Basic workflow:
 
 ```lua
--- 1. Create a window (tab)
+UIlib.SetTheme({ Accent = Color3.fromRGB(120,160,255) })  -- optional
+
 local Win = UIlib.MainWindow("Player")
-
--- 2. Create a section inside it
 local Sec = UIlib.Section(Win, "Movement")
-
--- 3. Add elements to the section
-UIlib.CreateButton(Sec, "Teleport to Spawn", function()
-    game.Players.LocalPlayer.Character:MoveTo(Vector3.new(0,5,0))
-end)
-
-UIlib.CreateToggle(Sec, "Noclip", false, function(enabled)
-    -- your noclip code
-end)
 
 UIlib.CreateSlider(Sec, "WalkSpeed", 0, 200, 16, function(val)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
 end)
 
--- 4. Done — the GUI appears automatically
+UIlib.CreateToggle(Sec, "Noclip", false, function(enabled)
+    _G.Noclip = enabled
+end)
+
+UIlib.Notify("My Hub", "Loaded!", 3, "success")
 ```
 
 ---
 
-## 2. MainWindow
+## 2. What's New in v3.0
+
+### New Elements
+| Element | Description |
+|---|---|
+| `CreateColorPicker` | Inline swatch button that opens the color editor |
+| `CreateKeybind` | Click-to-bind keybind element, stores `KeyCode` |
+| `CreateProgressBar` | Read-only bar you update with `.Set(value)` |
+| `CreateTable` | Scrollable grid with headers and row data |
+
+### Window / Layout
+| Feature | Description |
+|---|---|
+| Collapsible sections | Click the section header (or arrow) to collapse/expand |
+| Window inner tabs | `UIlib.CreateTab(window, "Name")` — sub-pages inside a window |
+| Resizable windows | Drag the bottom-right corner handle |
+| Window minimize | Click `—` in the title bar to shrink to just the title |
+| Window search bar | Click `⌕` in the title bar to filter elements by name |
+
+### Settings & Persistence
+| Feature | Description |
+|---|---|
+| Config auto-save | Call `UIlib.cfgSave(key, value)` — profiles.json persists |
+| Profile system | Named save slots: Default, PvP, Farm, etc. |
+| Import / Export | `UIlib.ExportConfig()` / `UIlib.ImportConfig(b64)` |
+
+### UX / Polish
+| Feature | Description |
+|---|---|
+| Context menu | Right-click any element → Copy value, Reset to default |
+| Tooltip system | `UIlib.SetTooltip(element, "text")` |
+| Animation presets | `UIlib.SetAnimation("slide" | "fade" | "bounce")` |
+| Mobile support | All drag/input handling uses Touch events too |
+
+### Code Quality
+| Feature | Description |
+|---|---|
+| Event system | `UIlib.on("themeChanged", fn)` / `UIlib.off(...)` |
+| Element registry | `UIlib.GetElement(win, sec, name)` |
+| Error boundary | All callbacks wrapped in `pcall` + error toast |
+| `UIlib.Version` | String e.g. `"3.0.0"` |
+| `UIlib.CheckForUpdates()` | Hits GitHub, notifies if newer version exists |
+
+### Notification system rework
+- Icons per type: `info`, `success`, `error`, `warning`, `default`
+- Dismissible via `×` button
+- Progress bar that drains over the duration
+- Optional action buttons per notification
+- Stacks cleanly; each slides in from the right
+
+---
+
+## 3. MainWindow
 
 ```lua
 local WindowObj = UIlib.MainWindow(name: string)
 ```
 
-Creates a new **window panel** and adds a corresponding button to the sidebar.
+Creates a **window panel** and adds a sidebar button. The root frame is draggable and resizable.
 
-| Parameter | Type   | Description                        |
-|-----------|--------|------------------------------------|
-| `name`    | string | Window title shown in the title bar and sidebar button |
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | string | Window title and sidebar label |
 
-**Returns** a `WindowObj` table:
+**Returns** a `WindowObj`:
 
-| Field      | Type   | Description                                        |
-|------------|--------|----------------------------------------------------|
-| `.Name`    | string | The name you passed in                             |
-| `.Frame`   | ScrollingFrame | The outer window frame                   |
-| `.Inner`   | Frame  | The inner content frame (parent for sections)      |
-| `.Sidebar` | Frame  | Reference to the shared sidebar                    |
-| `.Sections`| table  | `{ [sectionName] = sectionFrame }` lookup          |
-
-**Notes:**
-- The **first** window created is visible by default. All others start hidden.
-- Clicking a window's sidebar button hides all other windows and shows that one.
-- The window is **draggable** by its title bar.
-- The **×** button in the title bar hides the window (it is not destroyed).
-
-**Example:**
-```lua
-local HomeWin     = UIlib.MainWindow("Home")
-local SettingsWin = UIlib.MainWindow("Settings")
-local InfoWin     = UIlib.MainWindow("Info")
--- Three tabs now appear in the sidebar
-```
-
----
-
-## 3. Section
-
-```lua
-local sectionFrame = UIlib.Section(window: WindowObj, name: string)
-```
-
-Creates a **grouped box** inside a window. Sections are labeled containers that hold elements like buttons and toggles.
-
-| Parameter | Type      | Description               |
-|-----------|-----------|---------------------------|
-| `window`  | WindowObj | The window to add this section to |
-| `name`    | string    | Label shown at the top of the section |
-
-**Returns** the section `Frame`. Pass this frame as the first argument to `CreateButton`, `CreateToggle`, etc.
+| Field | Type | Description |
+|---|---|---|
+| `.Name` | string | Name passed in |
+| `.Frame` | ScrollingFrame | Outer scrollable frame |
+| `.Inner` | Frame | Content frame (parent for sections) |
+| `.Sidebar` | Frame | Shared sidebar reference |
+| `.Sections` | table | `{[sectionName] = sectionFrame}` |
+| `._tabs` | table | Inner tabs created with `CreateTab` |
 
 **Notes:**
-- Sections expand automatically as you add elements.
-- You can have as many sections per window as you like.
-- `window.Sections["My Section Name"]` gives you back the frame at any time.
+- First window created is visible by default.
+- `×` in the title bar hides but does not destroy the window.
+- Click `—` to minimize. Click `⌕` to open search.
+- Drag the bottom-right handle to resize.
 
-**Example:**
 ```lua
-local Win = UIlib.MainWindow("Combat")
-
-local AimSec  = UIlib.Section(Win, "Aimbot")
-local ESPSec  = UIlib.Section(Win, "ESP")
-local MiscSec = UIlib.Section(Win, "Misc")
+local HomeWin  = UIlib.MainWindow("Home")
+local SetWin   = UIlib.MainWindow("Settings")
+local InfoWin  = UIlib.MainWindow("Info")
 ```
 
 ---
 
-## 4. CreateButton
+## 4. Section
 
 ```lua
-local btn = UIlib.CreateButton(section: Frame, name: string, callback: function?)
+local sectionFrame = UIlib.Section(windowOrTab, name: string)
 ```
 
-Creates a **clickable button** inside a section.
+Creates a **collapsible labeled container** inside a window or tab.
 
-| Parameter  | Type     | Description                          |
-|------------|----------|--------------------------------------|
-| `section`  | Frame    | The section frame to add the button to |
-| `name`     | string   | Button label text                    |
-| `callback` | function | *(optional)* Called when clicked     |
+| Parameter | Type | Description |
+|---|---|---|
+| `windowOrTab` | WindowObj or TabObj | Parent window or inner tab |
+| `name` | string | Label shown in the section header |
 
-**Returns** the `TextButton` instance.
+**Returns** the section inner `Frame`.
 
-You can either pass the callback inline, or connect to it yourself afterward:
-
-```lua
--- Inline callback
-UIlib.CreateButton(Sec, "Load Vape", function()
-    loadstring(game:HttpGet("https://..."))()
-end)
-
--- Manual connection
-local MyBtn = UIlib.CreateButton(Sec, "Vape V4")
-MyBtn.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VWRewrite/master/NewMainScript.lua", true))()
-end)
-```
-
-**Visual behaviour:**
-- Hover → slightly lighter background
-- Mouse down → accent color flash
-- Mouse up → returns to normal
-
----
-
-## 5. CreateToggle
+**Notes:**
+- Click the section header or the `▼` arrow to collapse/expand.
+- `windowOrTab.Sections["My Name"]` retrieves the frame later.
 
 ```lua
-local obj = UIlib.CreateToggle(section: Frame, name: string, default: boolean, callback: function?)
-```
-
-Creates an **on/off switch** (pill toggle) inside a section.
-
-| Parameter  | Type     | Description                               |
-|------------|----------|-------------------------------------------|
-| `section`  | Frame    | Section to add into                       |
-| `name`     | string   | Label shown beside the toggle             |
-| `default`  | boolean  | Starting state (`true` = on, `false` = off) |
-| `callback` | function | *(optional)* Called with `(state: boolean)` when toggled |
-
-**Returns** a toggle object:
-
-| Field    | Type     | Description                              |
-|----------|----------|------------------------------------------|
-| `.Value` | boolean  | Current state                            |
-| `.Set(v)`| function | Programmatically set the state           |
-| `.Button`| TextButton | The pill button instance               |
-
-**Example:**
-```lua
-local noclipToggle = UIlib.CreateToggle(Sec, "Noclip", false, function(enabled)
-    -- toggle noclip logic here
-    print("Noclip:", enabled)
-end)
-
--- Read state later
-print(noclipToggle.Value)   -- true / false
-
--- Set state programmatically
-noclipToggle.Set(true)
+local Sec = UIlib.Section(Win, "Movement")
+-- Collapsible by default — users can hide sections they don't need
 ```
 
 ---
 
-## 6. CreateSlider
+## 5. CreateButton
+
+```lua
+local btn = UIlib.CreateButton(section, name: string, callback: function?)
+```
+
+Creates a **clickable button**. All callbacks are wrapped in `pcall` — an error pops a toast instead of crashing.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `section` | Frame | Section to add into |
+| `name` | string | Button label |
+| `callback` | function | Called on click |
+
+**Returns** the `TextButton`.
+
+Right-clicking the button opens a context menu with "Copy value" and "Reset to default".
+
+```lua
+UIlib.CreateButton(Sec, "Load Script", function()
+    task.spawn(function()
+        loadstring(game:HttpGet("https://..."))()
+    end)
+end)
+```
+
+---
+
+## 6. CreateToggle
+
+```lua
+local obj = UIlib.CreateToggle(section, name, default: boolean, callback: function?)
+```
+
+Creates an **on/off pill toggle**.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | boolean | Current state |
+| `.Set(v)` | function | Set state without firing callback |
+| `.Button` | TextButton | The pill instance |
+
+```lua
+local t = UIlib.CreateToggle(Sec, "Noclip", false, function(enabled)
+    _G.Noclip = enabled
+end)
+
+t.Set(true)          -- programmatic set
+print(t.Value)       -- true
+```
+
+---
+
+## 7. CreateSlider
 
 ```lua
 local obj = UIlib.CreateSlider(section, name, min, max, default, callback)
 ```
 
-Creates a **draggable slider** for numeric values.
+Creates a **draggable numeric slider**. Values are always integers.
 
-| Parameter  | Type     | Description                              |
-|------------|----------|------------------------------------------|
-| `section`  | Frame    | Section to add into                      |
-| `name`     | string   | Label shown above the slider             |
-| `min`      | number   | Minimum value                            |
-| `max`      | number   | Maximum value                            |
-| `default`  | number   | Starting value                           |
-| `callback` | function | *(optional)* Called with `(value: number)` on change |
+**Returns:**
 
-**Returns** a slider object:
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | number | Current integer value |
+| `.Set(v)` | function | Jump to a value |
 
-| Field    | Type     | Description                          |
-|----------|----------|--------------------------------------|
-| `.Value` | number   | Current integer value                |
-| `.Set(v)`| function | Programmatically set the value       |
-
-**Notes:**
-- Values are always **integers** (rounded to nearest whole number).
-- The current value is shown on the right side of the slider label.
-- Drag anywhere on the track to move the thumb.
-
-**Example:**
 ```lua
-local wsSlider = UIlib.CreateSlider(Sec, "WalkSpeed", 0, 500, 16, function(val)
-    local char = game.Players.LocalPlayer.Character
-    if char then char.Humanoid.WalkSpeed = val end
+local ws = UIlib.CreateSlider(Sec, "WalkSpeed", 0, 500, 16, function(v)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
 end)
-
--- Jump to a value
-wsSlider.Set(100)
-print(wsSlider.Value)  -- 100
+ws.Set(100)
 ```
 
 ---
 
-## 7. CreateDropdown
+## 8. CreateDropdown
 
 ```lua
-local obj = UIlib.CreateDropdown(section, name, options, callback)
+local obj = UIlib.CreateDropdown(section, name, options: table, callback)
 ```
 
-Creates a **dropdown selector** with an expanding list of options.
+Creates a **dropdown selector**. The list renders over everything else (parented to ScreenGui root). Clicking outside closes it.
 
-| Parameter  | Type     | Description                                          |
-|------------|----------|------------------------------------------------------|
-| `section`  | Frame    | Section to add into                                  |
-| `name`     | string   | Label prefix shown on the button                     |
-| `options`  | table    | Array of strings e.g. `{"Option A", "Option B"}`    |
-| `callback` | function | *(optional)* Called with `(selected: string)` on pick |
+**Returns:**
 
-**Returns** a dropdown object:
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | string | Currently selected option |
+| `.Set(v)` | function | Select an option programmatically |
+| `.Refresh(t)` | function | Replace options with new table |
 
-| Field         | Type     | Description                               |
-|---------------|----------|-------------------------------------------|
-| `.Value`      | string   | Currently selected option                 |
-| `.Set(v)`     | function | Programmatically select an option         |
-| `.Refresh(t)` | function | Replace the options list with a new table |
-
-**Important — overlap prevention:**  
-The dropdown list is parented directly to the `ScreenGui` root (not inside the section), so it always renders on top of everything else. Clicking outside the list closes it automatically.
-
-**Example:**
 ```lua
-local teamDD = UIlib.CreateDropdown(Sec, "Team", {"Attackers","Defenders","Spectators"}, function(val)
-    print("Selected team:", val)
+local dd = UIlib.CreateDropdown(Sec, "Mode", {"Fast","Normal","Stealth"}, function(v)
+    print("Mode:", v)
 end)
-
--- Change options later
-teamDD.Refresh({"Red","Blue","Green"})
-
--- Read or set
-print(teamDD.Value)
-teamDD.Set("Red")
+dd.Refresh({"A","B","C"})
 ```
 
 ---
 
-## 8. CreateTextbox
+## 9. CreateTextbox
 
 ```lua
 local textbox = UIlib.CreateTextbox(section, name, placeholder, callback)
 ```
 
-Creates a **text input field** with a label above it.
+Creates a **text input**. `ClearTextOnFocus` is `false`. Callback fires on focus lost or Enter.
 
-| Parameter     | Type     | Description                                           |
-|---------------|----------|-------------------------------------------------------|
-| `section`     | Frame    | Section to add into                                   |
-| `name`        | string   | Label shown above the input                           |
-| `placeholder` | string   | Gray hint text shown when empty                       |
-| `callback`    | function | *(optional)* Called with `(text: string, enterPressed: boolean)` when focus lost |
+**Returns** the `TextBox` instance.
 
-**Returns** the `TextBox` instance directly (so you can read `.Text` at any time).
-
-**Notes:**
-- `ClearTextOnFocus` is `false` — clicking does not erase existing text.
-- The callback fires when the player clicks away or presses Enter.
-
-**Example:**
 ```lua
-local nameBox = UIlib.CreateTextbox(Sec, "Player Name", "Enter a player...", function(text, enter)
-    if enter then
-        print("Searching for:", text)
-    end
+local box = UIlib.CreateTextbox(Sec, "Player Name", "Enter name...", function(text, enter)
+    if enter then print(text) end
 end)
-
--- Read text at any time
-print(nameBox.Text)
-
--- Set text programmatically
-nameBox.Text = "Roblox"
+print(box.Text)
+box.Text = "Roblox"
 ```
 
 ---
 
-## 9. CreateLabel
+## 10. CreateLabel
 
 ```lua
-local label = UIlib.CreateLabel(section: Frame, text: string)
+local label = UIlib.CreateLabel(section, text: string)
 ```
 
-Creates a **static text label** inside a section. Useful for descriptions, credits, instructions, or multi-line info.
+Creates a **static text label**. Supports `\n` for line breaks. Auto-wraps.
 
-| Parameter | Type   | Description                      |
-|-----------|--------|----------------------------------|
-| `section` | Frame  | Section to add into              |
-| `text`    | string | The text to display (wraps automatically) |
-
-**Returns** the `TextLabel` instance.
-
-**Example:**
 ```lua
-UIlib.CreateLabel(Sec, "Toggle noclip with the button below.")
-UIlib.CreateLabel(InfoSec,
-    "Credits:\n  wyverndayo – WyverionExecutor\n  frstee – Gui To Lua"
+UIlib.CreateLabel(Sec, "Toggle noclip below.\nRight-click elements for options.")
+```
+
+---
+
+## 11. CreateSeparator
+
+```lua
+UIlib.CreateSeparator(section)
+```
+
+Creates a **1px horizontal divider line** inside a section.
+
+---
+
+## 12. CreateColorPicker
+
+```lua
+local obj = UIlib.CreateColorPicker(section, name, defaultColor: Color3, callback)
+```
+
+Creates an **inline swatch button**. Clicking it opens the full `OpenColorEditor` popup.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | Color3 | Currently selected color |
+| `.Set(col)` | function | Update color programmatically |
+
+```lua
+local cp = UIlib.CreateColorPicker(Sec, "Accent Color", Color3.fromRGB(120,160,255), function(col)
+    UIlib.THEME.Accent = col
+    UIlib.Notify("Theme", "Accent updated!", 2)
+end)
+print(cp.Value)
+```
+
+---
+
+## 13. CreateKeybind
+
+```lua
+local obj = UIlib.CreateKeybind(section, name, defaultKey: Enum.KeyCode, callback)
+```
+
+Creates a **click-to-bind keybind element**. Click the button then press any key to assign it. After assignment, pressing the bound key fires the callback.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | Enum.KeyCode | Current bound key |
+| `.Set(kc)` | function | Set key programmatically |
+| `.Button` | TextButton | The bind button |
+
+```lua
+local kb = UIlib.CreateKeybind(Sec, "Toggle Noclip", Enum.KeyCode.F, function(kc)
+    noclipToggle.Set(not noclipToggle.Value)
+end)
+UIlib.SetTooltip(kb.Button, "Click then press a key to rebind")
+```
+
+---
+
+## 14. CreateProgressBar
+
+```lua
+local obj = UIlib.CreateProgressBar(section, name, initialValue, maxValue)
+```
+
+Creates a **read-only progress bar**. Useful for health, loading, timers.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `.Value` | number | Current value |
+| `.Set(v, animate?)` | function | Update value; `animate = false` skips tween |
+
+```lua
+local hpBar = UIlib.CreateProgressBar(Sec, "Health", 100, 100)
+
+-- Update it from a loop:
+game:GetService("RunService").Heartbeat:Connect(function()
+    local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
+    if hum then hpBar.Set(hum.Health) end
+end)
+```
+
+---
+
+## 15. CreateTable
+
+```lua
+local obj = UIlib.CreateTable(section, headers: table, rows: table, rowHeight?: number)
+```
+
+Creates a **scrollable data grid** with alternating row colors.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `headers` | `{string}` | Column headers |
+| `rows` | `{{any}}` | Array of rows, each an array of cell values |
+| `rowHeight` | number | Row height in px (default 26) |
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `.Rows` | table | Array of row Frames |
+| `.AddRow(data, index?)` | function | Append a row |
+| `.Clear()` | function | Remove all rows |
+| `.Refresh(newRows)` | function | Clear and rebuild |
+
+```lua
+local tbl = UIlib.CreateTable(Sec,
+    {"Player","Score","Kills"},
+    {
+        {"Alice", 1200, 14},
+        {"Bob",   800,  9},
+    }
 )
+
+-- Live update
+tbl.Refresh({{"Alice",1250,15},{"Bob",820,9}})
 ```
 
 ---
 
-## 10. CreateSeparator
+## 16. CreateTab (Window Inner Tabs)
 
 ```lua
-UIlib.CreateSeparator(section: Frame)
+local tabObj = UIlib.CreateTab(window: WindowObj, tabName: string)
 ```
 
-Creates a **1px horizontal dividing line** inside a section. Use it to visually group related elements.
+Creates a **sub-page tab bar** inside a window. The first tab is active by default. Pass `tabObj` instead of `WindowObj` to `Section`.
 
-**Returns** the separator `Frame`.
+**Returns:**
 
-**Example:**
+| Field | Type | Description |
+|---|---|---|
+| `.Name` | string | Tab name |
+| `.Frame` | Frame | Content frame |
+| `.Button` | TextButton | Tab button |
+
 ```lua
-UIlib.CreateButton(Sec, "Teleport to Spawn", ...)
-UIlib.CreateSeparator(Sec)
-UIlib.CreateButton(Sec, "Teleport to Player", ...)
+local MovTab    = UIlib.CreateTab(PlayerWin, "Movement")
+local TargetTab = UIlib.CreateTab(PlayerWin, "Target")
+
+-- Sections go into the tab, not the window:
+local MovSec = UIlib.Section(MovTab, "Speed")
+UIlib.CreateSlider(MovSec, "WalkSpeed", 0, 500, 16, callback)
 ```
 
 ---
 
-## 11. AddSetting
+## 17. AddSetting
 
 ```lua
 local element = UIlib.AddSetting(window, name, kind, ...)
 ```
 
-A **convenience helper** that automatically creates or reuses a section called `"Settings"` inside the given window, then adds one element of the specified type.
+Convenience helper — finds or creates a `"Settings"` section in `window`, then adds one element. Supports all element types including the new ones.
 
-| Parameter | Type   | Description                    |
-|-----------|--------|--------------------------------|
-| `window`  | WindowObj | Target window                |
-| `name`    | string | Element label                  |
-| `kind`    | string | One of: `"toggle"`, `"slider"`, `"dropdown"`, `"textbox"`, `"button"`, `"label"` |
-| `...`     | any    | Same extra arguments as the underlying `Create*` function |
+| Kind | Extra args |
+|---|---|
+| `"toggle"` | `default, callback` |
+| `"slider"` | `min, max, default, callback` |
+| `"dropdown"` | `options, callback` |
+| `"textbox"` | `placeholder, callback` |
+| `"button"` | `callback` |
+| `"label"` | `text` |
+| `"colorpicker"` | `defaultColor, callback` |
+| `"keybind"` | `defaultKey, callback` |
+| `"progress"` | `initialValue, maxValue` |
 
-**Returns** the same object that the underlying `Create*` function returns.
-
-**Kind → arguments mapping:**
-
-| Kind       | Extra args                          |
-|------------|-------------------------------------|
-| `"toggle"` | `default: boolean, callback`        |
-| `"slider"` | `min, max, default, callback`       |
-| `"dropdown"` | `options: table, callback`       |
-| `"textbox"` | `placeholder: string, callback`   |
-| `"button"` | `callback`                          |
-| `"label"`  | `text: string`                      |
-
-**Example:**
 ```lua
-local SettingsWin = UIlib.MainWindow("Settings")
-
-UIlib.AddSetting(SettingsWin, "Auto-Farm", "toggle", false, function(v)
-    _G.AutoFarm = v
-end)
-
-UIlib.AddSetting(SettingsWin, "Jump Power", "slider", 0, 500, 50, function(v)
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
-end)
-
-UIlib.AddSetting(SettingsWin, "Mode", "dropdown", {"Normal","Fast","Ghost"}, function(v)
-    print("Mode set to:", v)
-end)
+UIlib.AddSetting(Win, "Auto-Farm",  "toggle", false, function(v) _G.Farm = v end)
+UIlib.AddSetting(Win, "Speed",      "slider", 0, 500, 16, callback)
+UIlib.AddSetting(Win, "Accent",     "colorpicker", UIlib.THEME.Accent, function(c) UIlib.THEME.Accent = c end)
+UIlib.AddSetting(Win, "Toggle Key", "keybind", Enum.KeyCode.F, callback)
 ```
 
 ---
 
-## 12. Notify
+## 18. Notify
 
 ```lua
-UIlib.Notify(title: string, body: string, duration: number?)
+UIlib.Notify(title, body, duration?, type?, actions?)
 ```
 
-Shows a **toast notification** that slides in from the bottom-right corner of the screen and auto-dismisses after `duration` seconds. Multiple notifications stack upward.
+Shows a **toast notification** — slides in from the right, stacks upward, auto-dismisses.
 
-| Parameter  | Type   | Default | Description                     |
-|------------|--------|---------|---------------------------------|
-| `title`    | string | —       | Bold heading text               |
-| `body`     | string | —       | Smaller description text        |
-| `duration` | number | `3`     | Seconds before auto-dismiss     |
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `title` | string | — | Bold heading |
+| `body` | string | — | Body text |
+| `duration` | number | 3 | Auto-dismiss seconds |
+| `type` | string | `"default"` | `"info"`, `"success"`, `"error"`, `"warning"`, `"default"` |
+| `actions` | table | `{}` | `{{label, action}}` buttons inside the notification |
 
-**Notes:**
-- Notifications appear in the **bottom-right** of the screen (not the top).
-- They **stack upward** when multiple are active at once.
-- Each slides in from the right and slides back out to the right when dismissed.
-- The left accent bar color matches `THEME.Accent`.
+**New in v3.0:**
+- Left accent bar and icon change color based on `type`
+- A progress bar drains over `duration`
+- `×` button for manual dismiss
+- Optional action buttons
 
-**Example:**
 ```lua
-UIlib.Notify("TKHub", "Loaded successfully!", 4)
-UIlib.Notify("Error", "Script failed to execute.", 5)
-UIlib.Notify("Done", "WalkSpeed set to 100", 2)
+UIlib.Notify("Loaded", "Welcome!", 4, "success")
+UIlib.Notify("Error", "HttpService disabled.", 5, "error")
+UIlib.Notify("Update", "v3.1 is available!", 6, "info", {
+    { label = "Dismiss", action = function() end },
+})
 ```
 
 ---
 
-## 13. SetTheme
+## 19. SetTheme
 
 ```lua
 UIlib.SetTheme(colorTable: table)
 ```
 
-**Merges** a partial or full color table into the active theme. You only need to pass the keys you want to change.
+Merges a partial or full color table into the active theme. Call **before** building your windows.
 
-**Note:** `SetTheme` updates the theme table for future elements. It does **not** retroactively repaint existing GUI elements. To change existing colors live, use [`OpenColorEditor`](#15-opencoloreditor) or modify `UIlib.THEME` directly and call `SetTheme` before building your GUI.
+**Full key list:**
 
-**Full theme key list:**
+| Key | Controls |
+|---|---|
+| `Background` | Main window background |
+| `BackgroundLight` | Title bar, sections, textbox fill |
+| `SideBar` | Sidebar panel |
+| `SideBarBtn` | Sidebar button |
+| `SideBarBtnActive` | Active sidebar button |
+| `Accent` | Title text, scrollbar, slider, notification bar |
+| `Text` | Primary text |
+| `TextDim` | Labels, placeholders |
+| `ButtonBG` | Button background |
+| `ButtonHover` | Button hover |
+| `ToggleOff` | Toggle pill (off) |
+| `ToggleOn` | Toggle pill (on) |
+| `SliderBG` | Slider track |
+| `SliderFill` | Slider fill and thumb |
+| `SectionHeader` | Section header background |
+| `Separator` | Divider color |
+| `NotifyBG` | Notification background |
+| `NotifyBorder` | Notification border |
+| `ProgressBG` | Progress bar track |
+| `ProgressFill` | Progress bar fill |
+| `TableHeader` | Table header row |
+| `TableRow` | Table odd rows |
+| `TableRowAlt` | Table even rows |
+| `ContextBG` | Context menu background |
+| `ContextHover` | Context menu hover |
+| `TooltipBG` | Tooltip background |
+| `KeybindBG` | Keybind button background |
 
-| Key              | Controls                                        |
-|------------------|-------------------------------------------------|
-| `Background`     | Main window background                          |
-| `BackgroundLight`| Title bar, section boxes, textbox fill          |
-| `SideBar`        | Sidebar panel background                        |
-| `SideBarBtn`     | Sidebar button background                       |
-| `SideBarBtnActive` | Active sidebar button highlight               |
-| `Accent`         | Title text, scrollbar, slider fill, notif bar   |
-| `Text`           | Primary text color                              |
-| `TextDim`        | Secondary/label text color                      |
-| `ButtonBG`       | Button background                               |
-| `ButtonHover`    | Button hover background                         |
-| `ToggleOff`      | Toggle pill when off                            |
-| `ToggleOn`       | Toggle pill when on                             |
-| `SliderBG`       | Slider track background                         |
-| `SliderFill`     | Slider fill and thumb                           |
-| `SectionHeader`  | Section header pill background                  |
-| `Separator`      | Divider line color                              |
-| `NotifyBG`       | Notification panel background                   |
-
-**Example:**
 ```lua
--- Apply a blue theme before creating any windows
 UIlib.SetTheme({
-    Background       = Color3.fromRGB(10, 15, 30),
-    BackgroundLight  = Color3.fromRGB(20, 30, 55),
-    Accent           = Color3.fromRGB(80, 140, 255),
-    SliderFill       = Color3.fromRGB(80, 140, 255),
-    ToggleOn         = Color3.fromRGB(60, 120, 220),
+    Accent    = Color3.fromRGB(165,95,255),
+    ToggleOn  = Color3.fromRGB(135,72,225),
+    SliderFill = Color3.fromRGB(165,95,255),
 })
-
-local Win = UIlib.MainWindow("My Hub")
+local Win = UIlib.MainWindow("Hub")  -- build after SetTheme
 ```
 
 ---
 
-## 14. SetOpacity
+## 20. SetOpacity
 
 ```lua
 UIlib.SetOpacity(alpha: number)
 ```
 
-Sets the **overall opacity** of the entire GUI. `1` = fully opaque (default), `0` = invisible, `0.5` = 50% transparent.
+Sets the GUI's overall opacity. `1` = opaque, `0` = invisible.
 
-| Parameter | Type   | Range | Description        |
-|-----------|--------|-------|--------------------|
-| `alpha`   | number | 0–1   | Opacity multiplier |
-
-**How it works:**
-- On first call, the original `BackgroundTransparency` of every frame is snapshot.
-- Subsequent calls lerp between that snapshot and fully transparent.
-- Only frames with a non-transparent background are affected (text labels etc. are untouched).
-
-**Example:**
 ```lua
-UIlib.SetOpacity(1.0)   -- fully visible (default)
-UIlib.SetOpacity(0.75)  -- slightly see-through
-UIlib.SetOpacity(0.5)   -- half transparent
-UIlib.SetOpacity(0.0)   -- invisible (GUI exists but frames are see-through)
-
--- Slider controlling opacity:
-UIlib.CreateSlider(Sec, "GUI Opacity %", 10, 100, 100, function(val)
-    UIlib.SetOpacity(val / 100)
+UIlib.CreateSlider(Sec, "Opacity %", 10, 100, 100, function(v)
+    UIlib.SetOpacity(v / 100)
 end)
 ```
 
 ---
 
-## 15. OpenColorEditor
+## 21. SetAnimation
 
 ```lua
-UIlib.OpenColorEditor(label: string, currentColor: Color3, onDone: function)
+UIlib.SetAnimation(preset: string)
 ```
 
-Opens a **VSCode-style color picker popup** with:
-- A **Saturation/Value square** (drag to pick color darkness and intensity)
-- A **Hue strip** below (drag left/right to change color hue)
-- A **live preview swatch** and hex code
-- **Apply** and **Cancel** buttons
-- The panel is **draggable**
+Sets the **window entry animation**. Options: `"slide"` (default), `"fade"`, `"bounce"`.
 
-| Parameter      | Type     | Description                                         |
-|----------------|----------|-----------------------------------------------------|
-| `label`        | string   | Title shown at the top of the popup                 |
-| `currentColor` | Color3   | Starting color pre-loaded into the picker           |
-| `onDone`       | function | Called with `(newColor: Color3)` when Apply pressed. Not called if Cancel. |
-
-**Example:**
 ```lua
--- Simple standalone usage
-UIlib.CreateButton(Sec, "Pick Accent Color", function()
-    UIlib.OpenColorEditor("Accent", UIlib.THEME.Accent, function(newColor)
-        UIlib.THEME.Accent = newColor
-        UIlib.Notify("Theme", "Accent updated to #"..newColor:ToHex(), 2)
-    end)
-end)
-
--- Typical theme editor row pattern
-local KEYS = {"Accent", "Background", "ButtonBG", "ToggleOn"}
-for _, key in ipairs(KEYS) do
-    UIlib.CreateButton(Sec, "Edit "..key, function()
-        UIlib.OpenColorEditor(key, UIlib.THEME[key], function(col)
-            UIlib.THEME[key] = col
-            UIlib.Notify("Theme", key.." = #"..col:ToHex(), 2)
-        end)
-    end)
-end
+UIlib.SetAnimation("bounce")
 ```
 
 ---
 
-## 16. Destroy
+## 22. OpenColorEditor
+
+```lua
+UIlib.OpenColorEditor(label, currentColor: Color3, onDone: function)
+```
+
+Opens a **VSCode-style popup** with a Saturation/Value square, Hue strip, hex input, live preview, and Apply/Cancel buttons. Called automatically by `CreateColorPicker`.
+
+```lua
+UIlib.CreateButton(Sec, "Pick Color", function()
+    UIlib.OpenColorEditor("Accent", UIlib.THEME.Accent, function(col)
+        UIlib.THEME.Accent = col
+    end)
+end)
+```
+
+---
+
+## 23. SetTooltip
+
+```lua
+UIlib.SetTooltip(element: Instance, text: string)
+```
+
+Shows a **floating tooltip label** near the cursor when hovering over `element`.
+
+```lua
+local btn = UIlib.CreateButton(Sec, "Teleport", callback)
+UIlib.SetTooltip(btn, "Teleports you to spawn")
+```
+
+---
+
+## 24. Config System
+
+UIlib has a built-in key/value persistence system via `profiles.json`.
+
+```lua
+-- Save a value (automatically called by built-in elements)
+UIlib.cfgSave("myKey", "myValue")
+
+-- Load a value
+local v = UIlib.cfgLoad("myKey")
+```
+
+Built-in elements (toggles, sliders, dropdowns) auto-save when you use `cfgKey()` + `cfgSave()` around their callbacks. The data file lives at `TKLib/profiles.json`.
+
+---
+
+## 25. Profile System
+
+```lua
+UIlib.GetProfiles()          -- returns {profileName, ...}
+UIlib.NewProfile(name)       -- create + switch
+UIlib.SwitchProfile(name)    -- switch to existing
+UIlib.DeleteProfile(name)    -- delete (can't delete "Default")
+```
+
+Profiles let users switch between different saved configurations — e.g., one for PvP, one for farming.
+
+```lua
+local profiles = UIlib.GetProfiles()   -- {"Default", "PvP", "Farm"}
+UIlib.SwitchProfile("PvP")
+UIlib.NewProfile("Chill")
+```
+
+---
+
+## 26. Import / Export Config
+
+```lua
+UIlib.ExportConfig()          -- copies base64 string to clipboard
+UIlib.ImportConfig(b64string) -- parses + applies
+```
+
+The entire config is JSON-encoded and base64-compressed. Share it as a string to let other users apply your exact setup.
+
+```lua
+UIlib.CreateButton(Sec, "Export", function()
+    UIlib.ExportConfig()
+    -- clipboard now has your config as base64
+end)
+
+local impBox = UIlib.CreateTextbox(Sec, "Paste Config", "base64...", nil)
+UIlib.CreateButton(Sec, "Import", function()
+    UIlib.ImportConfig(impBox.Text)
+end)
+```
+
+---
+
+## 27. Event System
+
+```lua
+UIlib.on(event: string, fn: function)
+UIlib.off(event: string, fn: function)
+```
+
+Subscribe to internal events. Available events:
+
+| Event | Args | Fires when |
+|---|---|---|
+| `"windowOpened"` | `winName` | A sidebar tab is clicked |
+| `"themeChanged"` | `themeTable` | `SetTheme` is called |
+| `"visibilityChanged"` | `bool` | LAlt+RShift toggles the GUI |
+| `"configImported"` | `data` | `ImportConfig` succeeds |
+| `"profileChanged"` | `profileName` | Profile switched |
+
+```lua
+UIlib.on("themeChanged", function(theme)
+    print("New accent:", theme.Accent)
+end)
+
+UIlib.on("windowOpened", function(name)
+    print("Opened:", name)
+end)
+```
+
+---
+
+## 28. Element Registry
+
+```lua
+UIlib.GetElement(windowName, sectionName, elementName)
+```
+
+Retrieve any element by its window name, section name, and element name — without needing to store the reference yourself.
+
+```lua
+-- Get an element from anywhere in your code
+local ws = UIlib.GetElement("Player", "Movement", "WalkSpeed")
+if ws then ws.Set(100) end
+```
+
+> **Note:** Elements must be registered with `registerElem(winName, secName, elemName, obj)` after creation — this is done automatically by `CreateSlider`, `CreateToggle`, etc. when you use the standard API.
+
+---
+
+## 29. Destroy
 
 ```lua
 UIlib.Destroy()
 ```
 
-**Completely removes** the TKLib ScreenGui from `PlayerGui` and resets all internal state. After calling this:
-- The GUI is gone from the screen.
-- All window/section references are stale (do not use them).
-- You can call `UIlib.MainWindow(...)` again to rebuild from scratch.
+Removes the ScreenGui and resets all internal state. Safe to rebuild from scratch after calling.
 
-**Example:**
 ```lua
 UIlib.CreateButton(DangerSec, "Unload Hub", function()
-    _G.__TKHUB_RUNNING = nil
+    _G.__MYHUB = nil
     UIlib.Destroy()
 end)
 ```
 
 ---
 
-## 17. UIlib.THEME table
+## 30. UIlib.THEME table
 
-`UIlib.THEME` is the **live theme table**. You can read and write it directly at any time.
+Live theme table. Read or write any key at any time.
 
 ```lua
--- Read current accent color
 print(UIlib.THEME.Accent)
-
--- Change a color directly (affects new elements and color editor swatches)
 UIlib.THEME.Accent = Color3.fromRGB(255, 100, 0)
-
--- Use in your own code
-local accentColor = UIlib.THEME.Accent
 ```
 
-The full list of keys is in the [SetTheme](#13-settheme) section.
+---
+
+## 31. Keyboard Shortcut
+
+| Keys | Action |
+|---|---|
+| `Left Alt` + `Right Shift` | Toggle GUI visibility |
+
+Always active once UIlib is loaded. Fires the `"visibilityChanged"` event.
 
 ---
 
-## 18. Keyboard Shortcut
+## 32. Versioning & Update Check
 
-| Keys                        | Action                    |
-|-----------------------------|---------------------------|
-| `Left Alt` + `Right Shift`  | Toggle GUI visibility on/off |
+```lua
+print(UIlib.Version)     -- "3.0.0"
+UIlib.CheckForUpdates()  -- async; shows a notification if newer version exists
+```
 
-This is always active once UIlib is loaded. Pressing the combo hides or shows the entire ScreenGui.
+`CheckForUpdates` fetches `version.txt` from the GitHub repo and compares against `UIlib.Version`.
 
 ---
 
-## 19. Full Example
+## 33. Full Example
 
 ```lua
 local UIlib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/YOUR/REPO/main/TKLib/Lib/UIlib.lua", true
+    "https://raw.githubusercontent.com/T1K2060/TKHub/refs/heads/main/Lib/UIlib.lua", true
 ))()
 
 -- ── Theme ──────────────────────────────────────────────────────
 UIlib.SetTheme({
-    Accent    = Color3.fromRGB(80, 140, 255),
-    SliderFill = Color3.fromRGB(80, 140, 255),
-    ToggleOn  = Color3.fromRGB(60, 120, 220),
+    Accent    = Color3.fromRGB(120,160,255),
+    ToggleOn  = Color3.fromRGB(100,145,255),
+    SliderFill = Color3.fromRGB(120,160,255),
 })
+UIlib.SetAnimation("slide")
 
 -- ── Windows ────────────────────────────────────────────────────
 local Win      = UIlib.MainWindow("Player")
-local WinMisc  = UIlib.MainWindow("Misc")
 local WinSets  = UIlib.MainWindow("Settings")
 
--- ── Player window ──────────────────────────────────────────────
-local MoveSec = UIlib.Section(Win, "Movement")
+-- ── Inner tabs ─────────────────────────────────────────────────
+local MovTab    = UIlib.CreateTab(Win, "Movement")
+local MiscTab   = UIlib.CreateTab(Win, "Misc")
 
-local wsSlider = UIlib.CreateSlider(MoveSec, "WalkSpeed", 0, 500, 16, function(v)
+-- ── Movement ───────────────────────────────────────────────────
+local MovSec = UIlib.Section(MovTab, "Speed & Jump")
+
+local wsSlider = UIlib.CreateSlider(MovSec, "WalkSpeed", 0, 500, 16, function(v)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
 end)
+UIlib.SetTooltip(wsSlider, "Sets your walk speed")
 
-local jpSlider = UIlib.CreateSlider(MoveSec, "JumpPower", 0, 500, 50, function(v)
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
-end)
-
-UIlib.CreateSeparator(MoveSec)
-
-UIlib.CreateToggle(MoveSec, "Infinite Jump", false, function(enabled)
+UIlib.CreateToggle(MovSec, "Infinite Jump", false, function(enabled)
     _G.InfJump = enabled
-    if enabled then
-        game:GetService("UserInputService").JumpRequest:Connect(function()
-            if _G.InfJump then
-                game.Players.LocalPlayer.Character.Humanoid:ChangeState(
-                    Enum.HumanoidStateType.Jumping
-                )
-            end
-        end)
-    end
 end)
 
-local TargetSec = UIlib.Section(Win, "Target")
+UIlib.CreateProgressBar(MovSec, "Health", 100, 100)
 
-UIlib.CreateDropdown(TargetSec, "Target Player",
-    (function()
-        local names = {}
-        for _, p in ipairs(game.Players:GetPlayers()) do
-            table.insert(names, p.Name)
-        end
-        return names
-    end)(),
-    function(name)
-        UIlib.Notify("Target", "Selected: "..name, 2)
-    end
-)
+-- ── Keybind ────────────────────────────────────────────────────
+local MiscSec = UIlib.Section(MiscTab, "Controls")
 
-UIlib.CreateButton(TargetSec, "Teleport to Target", function()
-    UIlib.Notify("Teleport", "Feature coming soon!", 2)
+UIlib.CreateKeybind(MiscSec, "Toggle GUI", Enum.KeyCode.RightShift, function()
+    -- custom toggle action
 end)
 
--- ── Misc window ────────────────────────────────────────────────
-local ScriptSec = UIlib.Section(WinMisc, "Scripts")
-
-UIlib.CreateButton(ScriptSec, "Infinity Yield", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+UIlib.CreateColorPicker(MiscSec, "ESP Color", Color3.fromRGB(255,80,80), function(col)
+    _G.ESPColor = col
 end)
 
-UIlib.CreateButton(ScriptSec, "Dex Explorer", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
-end)
-
--- ── Settings window ────────────────────────────────────────────
+-- ── Settings ───────────────────────────────────────────────────
 local AppSec = UIlib.Section(WinSets, "Appearance")
 
 UIlib.CreateSlider(AppSec, "Opacity %", 10, 100, 100, function(v)
     UIlib.SetOpacity(v / 100)
 end)
 
-UIlib.CreateButton(AppSec, "Edit Accent Color", function()
-    UIlib.OpenColorEditor("Accent", UIlib.THEME.Accent, function(col)
-        UIlib.THEME.Accent = col
-        UIlib.Notify("Theme", "Accent = #"..col:ToHex(), 2)
-    end)
+UIlib.CreateDropdown(AppSec, "Animation", {"slide","fade","bounce"}, function(v)
+    UIlib.SetAnimation(v)
 end)
 
-UIlib.AddSetting(WinSets, "Debug Mode", "toggle", false, function(v)
-    _G.DebugMode = v
+UIlib.CreateButton(AppSec, "Export Config", function()
+    UIlib.ExportConfig()
 end)
 
--- ── Notification on load ───────────────────────────────────────
-UIlib.Notify("My Hub", "Loaded! Press LAlt+RShift to hide.", 5)
+-- ── Events ─────────────────────────────────────────────────────
+UIlib.on("windowOpened", function(name)
+    print("Switched to:", name)
+end)
+
+-- ── Startup ────────────────────────────────────────────────────
+UIlib.Notify("My Hub", "Loaded! LAlt+RShift to hide.", 5, "success", {
+    { label = "OK", action = function() end }
+})
 ```
 
 ---
 
-## 20. Common Mistakes
+## 34. Common Mistakes
 
-### ❌ Passing the window instead of the section
-
+### Passing window instead of section
 ```lua
--- WRONG – passing WindowObj to CreateButton
-UIlib.CreateButton(Win, "My Button", function() end)
+-- WRONG
+UIlib.CreateButton(Win, "Click me", fn)
 
--- CORRECT – pass the Section frame
+-- CORRECT
 local Sec = UIlib.Section(Win, "My Section")
-UIlib.CreateButton(Sec, "My Button", function() end)
+UIlib.CreateButton(Sec, "Click me", fn)
 ```
 
-### ❌ Reading `.Value` before the user interacts
-
+### SetTheme after building the GUI
 ```lua
-local t = UIlib.CreateToggle(Sec, "Thing", false, nil)
--- t.Value is immediately valid (equals the default)
-print(t.Value)  -- false  ✓
+-- WRONG – only affects new elements
+local Win = UIlib.MainWindow("Hub")
+UIlib.SetTheme({ Accent = Color3.fromRGB(255,0,0) })
+
+-- CORRECT
+UIlib.SetTheme({ Accent = Color3.fromRGB(255,0,0) })
+local Win = UIlib.MainWindow("Hub")
 ```
 
-`.Value` is always set to the default on creation — safe to read immediately.
-
-### ❌ SetTheme after building the GUI
-
-`SetTheme` only affects **new** elements created after the call. Call it before `MainWindow` if you want the whole GUI themed:
-
+### Blocking operations inside callbacks
 ```lua
-UIlib.SetTheme({ Accent = Color3.fromRGB(255,0,0) })   -- FIRST
-local Win = UIlib.MainWindow("Hub")                     -- THEN build
-```
-
-### ❌ Calling UIlib functions after Destroy
-
-```lua
-UIlib.Destroy()
-UIlib.CreateButton(Sec, ...)   -- ERROR – Sec no longer exists
-```
-
-After `Destroy`, rebuild from `MainWindow` if you need the GUI again.
-
-### ❌ Forgetting `task.spawn` for blocking operations inside callbacks
-
-```lua
--- WRONG – blocks the Roblox engine thread
+-- WRONG – blocks the engine thread
 UIlib.CreateButton(Sec, "Load", function()
-    game:HttpGet("https://...")   -- yields; fine in spawn, not directly
-    -- other long work
+    local code = game:HttpGet("https://...")
+    loadstring(code)()
 end)
 
 -- CORRECT
@@ -795,6 +936,39 @@ UIlib.CreateButton(Sec, "Load", function()
 end)
 ```
 
+### Using UIlib after Destroy
+```lua
+UIlib.Destroy()
+-- All window/section refs are now stale
+UIlib.CreateButton(Sec, ...)  -- ERROR
+
+-- To rebuild:
+local Win2 = UIlib.MainWindow("Hub")
+```
+
+### Forgetting to use CreateTab before Section (for tabbed windows)
+```lua
+-- This adds a section directly to the window (OK but no tab button)
+local Sec = UIlib.Section(Win, "Stuff")
+
+-- This adds a section inside a tab (with a tab bar)
+local Tab = UIlib.CreateTab(Win, "Tab Name")
+local Sec = UIlib.Section(Tab, "Stuff")
+```
+
 ---
 
-*TKLib UIlib – documentation last updated for v2.1*
+## 35. Backward Compatibility
+
+v3.0 is **fully backward compatible** with all v2.x scripts. Every existing API (`CreateButton`, `CreateToggle`, `CreateSlider`, `CreateDropdown`, `CreateTextbox`, `CreateLabel`, `CreateSeparator`, `AddSetting`, `Notify`, `SetTheme`, `SetOpacity`, `OpenColorEditor`, `Destroy`, `UIlib.THEME`) works exactly as before.
+
+**The only behavioral additions are:**
+- Sections now have a collapse arrow — they still expand by default, so existing UIs look the same.
+- `Notify` now accepts two optional extra parameters (`type`, `actions`) — omitting them falls back to the original behavior.
+- The root window is now resizable — dragging still works the same way.
+
+No code changes are required in scripts written for v2.x.
+
+---
+
+*TKLib UIlib — documentation for v3.0.0*
